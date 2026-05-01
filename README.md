@@ -15,6 +15,26 @@ A Claude Code skill that monitors trending news and tweets for any keyword, scor
 - **Emails** a card-style HTML digest to any number of recipients
 - **Runs automatically** on every Mac wake + every 12 hours via macOS launchd — no cloud subscription needed
 
+### Two delivery modes
+
+| Trigger | Destination | Format |
+|---|---|---|
+| Manual `/topic-monitor KEYWORD` | **Obsidian vault** | Full markdown note, one file per topic per day |
+| Automatic (launchd every 12h) | **Gmail inbox** | Card-style HTML digest covering all active topics |
+
+**Manual searches** save to your Obsidian vault automatically (if `obsidian_vault` is set in `config.md`):
+```
+Research/Topic Monitor/
+├── openAI/
+│   └── 2026-05-01.md
+├── claude code/
+│   └── 2026-05-01.md
+└── adobe/
+    └── 2026-05-01.md
+```
+
+**Scheduled runs** send an email digest only — nothing is written to Obsidian. This keeps your vault clean while still delivering the daily summary to your inbox.
+
 ### Example email digest
 
 Each topic gets its own card with:
