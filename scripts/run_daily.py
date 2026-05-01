@@ -15,7 +15,7 @@ import json
 import argparse
 import re
 import os
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -29,6 +29,10 @@ import send_email as email_module
 CONFIG_DIR = Path.home() / ".claude" / "skills" / "topic-monitor"
 SUBSCRIPTIONS_FILE = CONFIG_DIR / "subscriptions.md"
 CONFIG_FILE = CONFIG_DIR / "config.md"
+LAST_SENT_FILE = CONFIG_DIR / "last_sent_date"
+
+# Don't fire if it's before this hour (prevents accidental midnight/early wake triggers)
+EARLIEST_HOUR = 6
 
 
 def parse_config() -> dict:
@@ -449,11 +453,32 @@ def build_email_html(results: list[dict], run_date: str) -> str:
 </body></html>"""
 
 
+def already_sent_today() -> bool:
+    if not LAST_SENT_FILE.exists():
+        return False
+    return LAST_SENT_FILE.read_text().strip() == date.today().isoformat()
+
+
+def mark_sent_today():
+    LAST_SENT_FILE.write_text(date.today().isoformat())
+
+
 def main():
     parser = argparse.ArgumentParser(description="Topic Monitor daily digest runner")
     parser.add_argument("--dry-run", action="store_true", help="Print report without sending email")
     parser.add_argument("--topic", default=None, help="Run a single topic only")
+    parser.add_argument("--force", action="store_true", help="Skip date-gate check and run regardless")
     args = parser.parse_args()
+
+    # Date-gate: only send once per day, and not before EARLIEST_HOUR
+    if not args.dry_run and not args.force:
+        current_hour = datetime.now().hour
+        if current_hour < EARLIEST_HOUR:
+            print(f"[run_daily] Too early ({current_hour}h < {EARLIEST_HOUR}h minimum). Skipping.", file=sys.stderr)
+            sys.exit(0)
+        if already_sent_today():
+            print(f"[run_daily] Digest already sent today ({date.today().isoformat()}). Skipping.", file=sys.stderr)
+            sys.exit(0)
 
     config = parse_config()
     subscriptions = parse_subscriptions()
@@ -537,12 +562,18 @@ def main():
         print("[run_daily] Gmail not configured. Run: python3 send_email.py --setup", file=sys.stderr)
         sys.exit(1)
 
+    any_sent = False
     for recipient in recipients:
         success = email_module.send_email(recipient, subject, html_body, html=True)
         if success:
             print(f"[run_daily] ✓ Digest sent to {recipient}", file=sys.stderr)
+            any_sent = True
         else:
             print(f"[run_daily] ✗ Failed to send to {recipient}.", file=sys.stderr)
+
+    if any_sent:
+        mark_sent_today()
+        print(f"[run_daily] Marked {date.today().isoformat()} as sent. Won't run again until tomorrow.", file=sys.stderr)
 
 
 if __name__ == "__main__":

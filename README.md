@@ -13,7 +13,7 @@ A Claude Code skill that monitors trending news and tweets for any keyword, scor
 - **Scores every source** on 4 dimensions: Recency, Authority, Engagement, Depth (max 10)
 - **Synthesizes** an AI report per topic using Gemini: executive summary, article highlights, trending themes
 - **Emails** a card-style HTML digest to any number of recipients
-- **Runs automatically** on every Mac wake + every 12 hours via macOS launchd — no cloud subscription needed
+- **Runs automatically** on every Mac wake via macOS launchd — fires once per day on your first morning open (after 6am), then resets the next day
 
 ### Two delivery modes
 
@@ -139,7 +139,7 @@ cp ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist \
 launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
 ```
 
-The job will now run immediately on every Mac wake and every 12 hours while your Mac is on. If your Mac is off, it runs as soon as it wakes up.
+The job fires on every Mac wake. The script automatically sends the digest only **once per day** — the first time you open your laptop after 6am. If the Mac wakes up at 3am or you open the lid multiple times, it skips quietly. The next day it resets and sends again on your first real morning open.
 
 ### 7. Add your first topic and test
 
