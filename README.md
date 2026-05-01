@@ -33,6 +33,8 @@ Research/Topic Monitor/
     └── 2026-05-01.md
 ```
 
+See [examples/2026-05-01 buildinpublic.md](examples/2026-05-01%20buildinpublic.md) for a real example of what a manual Obsidian note looks like.
+
 **Scheduled runs** send an email digest only — nothing is written to Obsidian. This keeps your vault clean while still delivering the daily summary to your inbox.
 
 ### Example email digest
@@ -44,6 +46,10 @@ Each topic gets its own card with:
 - 📈 What's Trending — dominant themes across all sources
 - 🐦 Top Tweets — when Twitter is enabled for that topic
 - ▸ Source Quality Table — collapsible, full breakdown
+
+![Email digest — topic header and executive summary](examples/cc.jpg)
+![Email digest — article highlights and trending themes](examples/cc2.jpg)
+![Email digest — top tweets and source quality table](examples/cc3.jpg)
 
 ---
 
@@ -274,3 +280,11 @@ Uses **Gemini** with a model fallback chain (tries in order):
 ## License
 
 MIT
+
+---
+
+## Contributing
+
+This skill started as a personal project, but if you find it useful, improvements are very welcome! Feel free to open an issue if something isn't working, suggest a new feature, or submit a pull request — whether it's a bug fix, a new search source, or a better email template. No contribution is too small.
+
+If you run into any trouble setting it up, don't hesitate to open an issue and describe what went wrong. Happy to help!
