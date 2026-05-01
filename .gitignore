@@ -1,0 +1,17 @@
+# Credentials — never commit these
+gmail_app_password
+gmail_sender
+twitter_api_key
+gemini_api_key
+
+# Personal config — copy config.example.md → config.md and fill in your values
+config.md
+
+# Logs
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
