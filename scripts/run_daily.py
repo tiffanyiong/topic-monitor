@@ -101,7 +101,7 @@ def run_search_for_topic(sub: dict, window_hours: int) -> dict:
             from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _ac
             import time as _time
             latest = twitter_module.search_tweets(keyword, 8, "Latest", api_key, days)
-            _time.sleep(6)  # free tier: 1 req per 5s
+            _time.sleep(10)  # free tier: 1 req per 5s, 10s buffer for safety
             top    = twitter_module.search_tweets(keyword, 8, "Top",    api_key, days)
 
             # Merge: dedupe by URL, prefer higher score when duplicate
