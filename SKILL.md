@@ -46,12 +46,20 @@ Requires a [TwitterAPI.io](https://twitterapi.io) key ($1 free credit included).
 
 **6. Set up auto-scheduling on macOS**
 
-Edit `com.tiffany.topic-monitor.plist` — replace the Python path and username with yours — then:
+First, decide what time window you'd like to receive your digest. The default is 8am–2pm — the plist fires every hour in that window, and the script sends on the first hit of the day, skipping the rest.
+
+Edit `com.tiffany.topic-monitor.plist`:
+- Replace the Python path (find yours with `which python3`)
+- Replace `/Users/tiffanyiong` with your username
+- Adjust the `StartCalendarInterval` hours to match your morning window (e.g. 8–14 for 8am–2pm, or 9–12 for 9am–noon)
+
+Then register it:
 ```bash
 cp com.tiffany.topic-monitor.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
 ```
-This runs the digest on every Mac wake + every 12 hours.
+
+The digest will arrive on your first Mac open within that window each day. Nothing fires outside the window or after it's already been sent.
 
 **7. Add your first topic and test**
 ```
