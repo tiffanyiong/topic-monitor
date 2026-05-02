@@ -32,7 +32,7 @@ CONFIG_FILE = CONFIG_DIR / "config.md"
 LAST_SENT_FILE = CONFIG_DIR / "last_sent_date"
 
 # Don't fire if it's before this hour (prevents accidental midnight/early wake triggers)
-EARLIEST_HOUR = 6
+EARLIEST_HOUR = 8
 
 
 def parse_config() -> dict:
