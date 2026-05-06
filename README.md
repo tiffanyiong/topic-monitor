@@ -13,7 +13,7 @@ A Claude Code skill that monitors trending news and tweets for any keyword, scor
 - **Scores every source** on 4 dimensions: Recency, Authority, Engagement, Depth (max 10)
 - **Synthesizes** an AI report per topic using Gemini: executive summary, article highlights, trending themes
 - **Emails** a card-style HTML digest to any number of recipients
-- **Runs automatically** on every Mac wake via macOS launchd — fires once per day on your first morning open (after 6am), then resets the next day
+- **Runs automatically** via macOS launchd — fires every hour from 8am to 10pm, sends once per day on your first open, resets the next day
 
 ### Two delivery modes
 
@@ -131,7 +131,9 @@ which python3
 # Edit the plist
 nano ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist
 # Replace: /Library/Frameworks/Python.framework/Versions/3.14/bin/python3
-# Replace: /Users/tiffanyiong with /Users/YOUR_USERNAME
+# Replace: /Users/YOUR_USERNAME with your actual username (appears 3 times)
+# Optional: adjust the StartCalendarInterval hours to match when you open your laptop
+#   Default is 8am–10pm. Remove hours you'd never open your laptop.
 
 # Register with launchd
 cp ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist \
@@ -139,7 +141,7 @@ cp ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist \
 launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
 ```
 
-The job fires on every Mac wake. The script automatically sends the digest only **once per day** — the first time you open your laptop after 6am. If the Mac wakes up at 3am or you open the lid multiple times, it skips quietly. The next day it resets and sends again on your first real morning open.
+The plist fires every hour from **8am to 10pm**. The script sends the digest on the first hit of the day and silently skips the rest. If your Mac is asleep when a tick fires, the missed tick runs the moment you open the lid — so you get the email right when you wake up your laptop, no matter what time that is.
 
 ### 7. Add your first topic and test
 

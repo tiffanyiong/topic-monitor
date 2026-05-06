@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tiffany.topic-monitor</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Replace with your Python path: run `which python3` to find it -->
+        <string>/Library/Frameworks/Python.framework/Versions/3.14/bin/python3</string>
+        <!-- Replace YOUR_USERNAME with your macOS username -->
+        <string>/Users/YOUR_USERNAME/.claude/skills/topic-monitor/scripts/run_daily.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <!-- Replace YOUR_USERNAME with your macOS username -->
+    <string>/Users/YOUR_USERNAME/.claude/skills/topic-monitor</string>
+
+    <!-- Fires every hour from 8am to 10pm. Script sends once per day on first hit, skips the rest.
+         Adjust hours to match when you typically open your laptop.
+         If your Mac is asleep, missed ticks fire immediately on wake. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>13</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>14</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>16</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>17</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>20</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>22</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <!-- Replace YOUR_USERNAME with your macOS username -->
+    <string>/Users/YOUR_USERNAME/.claude/skills/topic-monitor/logs/daily.log</string>
+
+    <key>StandardErrorPath</key>
+    <!-- Replace YOUR_USERNAME with your macOS username -->
+    <string>/Users/YOUR_USERNAME/.claude/skills/topic-monitor/logs/daily.error.log</string>
+
+    <!-- Throttle: don't re-run if it crashed within 60 seconds -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+</dict>
+</plist>
