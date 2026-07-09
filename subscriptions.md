@@ -37,3 +37,8 @@
   enabled: true
   days: 1
   twitter: false
+
+- keyword: anthropic
+  enabled: true
+  days: 1
+  twitter: false
