@@ -32,3 +32,8 @@
   enabled: true
   days: 1
   twitter: false
+
+- keyword: HealthcareAI
+  enabled: true
+  days: 1
+  twitter: false
