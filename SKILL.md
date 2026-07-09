@@ -1,7 +1,7 @@
 ---
 name: topic-monitor
 description: >
-  Searches the web, news sources, and optionally Twitter/X for trending articles, tweets, and discussions about a keyword, then scores each source for authenticity and quality, and delivers a curated report. Supports topic subscriptions with daily email digests. Triggered by: /topic-monitor KEYWORD, /topic-monitor follow/unfollow/list/pause/resume, /topic-monitor set ..., /topic-monitor setup email/twitter, /topic-monitor test.
+  Searches the web, news sources, and optionally Twitter/X for trending articles, tweets, and discussions about a keyword, then scores each source for authenticity and quality, and delivers a curated report. Supports topic subscriptions with daily email digests and GitHub Actions cloud scheduling. Triggered by: /topic-monitor KEYWORD, /topic-monitor follow/unfollow/list/pause/resume, /topic-monitor set ..., /topic-monitor setup email/twitter/github-actions, /topic-monitor test.
 ---
 
 # Topic Monitor
@@ -46,12 +46,12 @@ Requires a [TwitterAPI.io](https://twitterapi.io) key ($1 free credit included).
 
 **6. Set up auto-scheduling on macOS**
 
-First, decide what time window you'd like to receive your digest. The default is 8am–2pm — the plist fires every hour in that window, and the script sends on the first hit of the day, skipping the rest.
+First, decide what fixed local time you'd like to receive your digest. The default plist runs once per day at 8:00am.
 
 Edit `com.tiffany.topic-monitor.plist`:
 - Replace the Python path (find yours with `which python3`)
-- Replace `/Users/tiffanyiong` with your username
-- Adjust the `StartCalendarInterval` hours to match your morning window (e.g. 8–14 for 8am–2pm, or 9–12 for 9am–noon)
+- Replace `/Users/YOUR_USERNAME` with your username
+- Adjust the `StartCalendarInterval` hour if you do not want 8am
 
 Then register it:
 ```bash
@@ -59,7 +59,25 @@ cp com.tiffany.topic-monitor.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
 ```
 
-The digest will arrive on your first Mac open within that window each day. Nothing fires outside the window or after it's already been sent.
+The digest will run at the fixed local time when your Mac is awake. If the user needs delivery while their computer is off, use GitHub Actions cloud scheduling.
+
+**6b. Optional: cloud scheduling with GitHub Actions**
+
+Use this when the user wants the digest to run even if their computer is off. The workflow lives at `.github/workflows/daily.yml` and reads credentials from GitHub Secrets. To set it up, route to **GitHub Actions Setup Workflow**.
+
+Required GitHub Secrets:
+- `GEMINI_API_KEY`
+- `GMAIL_SENDER`
+- `GMAIL_APP_PASSWORD`
+- `EMAIL_RECIPIENTS`
+
+Optional GitHub Secret:
+- `TWITTER_API_KEY`
+
+Optional GitHub Variables:
+- `SCHEDULE_TIME` (default `08:00`)
+- `SCHEDULE_TIMEZONE` (default `America/Los_Angeles`)
+- `SCHEDULED_WINDOW_HOURS` (default `24`)
 
 **7. Add your first topic and test**
 ```
@@ -87,6 +105,7 @@ Read the user's invocation first. Route to the correct workflow below.
 | `/topic-monitor set ...` | → **Settings Workflow** |
 | `/topic-monitor setup email` | → **Email Setup Workflow** |
 | `/topic-monitor setup twitter` | → **Twitter Setup Workflow** |
+| `/topic-monitor setup github-actions` | → **GitHub Actions Setup Workflow** |
 | `/topic-monitor test email` | → **Test Email Workflow** |
 | `/topic-monitor test run` | → **Test Run Workflow** |
 
@@ -221,7 +240,7 @@ Recipients (all topics):
   1  tiffanyiong924@gmail.com
   2  roryzhang95@gmail.com
 
-Digest runs: on Mac wake + every 12h
+Digest runs: local launchd at fixed time, or GitHub Actions cloud schedule
 ```
 
 3. Offer quick actions:
@@ -255,7 +274,7 @@ For `set recipients` commands:
 - `set recipients remove b@x.com` → read current `email_recipients`, remove that address, write back
 - After any change, confirm: "Digest will now be sent to: a@x.com, b@x.com"
 
-After any schedule change: remind user to re-run `/schedule` to update the cron.
+After any local schedule change: remind the user to reload the launchd plist. For GitHub Actions, update repository Variables instead.
 After any `twitter` change: remind user that `/topic-monitor setup twitter` is needed if no key is saved.
 
 ---
@@ -295,6 +314,22 @@ For `/topic-monitor setup twitter`:
    ```
    The script will prompt for the key and save it.
 4. Confirm and remind: "Twitter is configured. Enable it per topic with `/topic-monitor set twitter KEYWORD on`"
+
+---
+
+## GitHub Actions Setup Workflow
+
+For `/topic-monitor setup github-actions`:
+
+1. Read `references/github-actions.md` before guiding the user.
+2. Explain the model briefly: the user's fork runs `.github/workflows/daily.yml` in GitHub's cloud; secrets stay in their repo; their local laptop does not need to be on.
+3. Check whether the current skill/repo has `.github/workflows/daily.yml`. If it is missing, create it from the bundled template.
+4. Check `subscriptions.md`; if there are no enabled topics, ask the user to add one with `/topic-monitor follow KEYWORD`.
+5. Guide the user to set required GitHub Secrets: `GEMINI_API_KEY`, `GMAIL_SENDER`, `GMAIL_APP_PASSWORD`, `EMAIL_RECIPIENTS`. Mention optional `TWITTER_API_KEY`.
+6. Guide the user to set optional GitHub Variables: `SCHEDULE_TIME`, `SCHEDULE_TIMEZONE`, `SCHEDULED_WINDOW_HOURS`.
+7. If `gh` is available and authenticated, offer interactive commands like `gh secret set GEMINI_API_KEY`; do not ask the user to paste secrets into chat unless they explicitly choose that.
+8. Tell the user to run the workflow manually once from the GitHub Actions tab, or use `gh workflow run "Topic Monitor Daily Digest"` when available.
+9. On completion, remind them that Actions uses GitHub-hosted runners, so email can send even when their own machine is off.
 
 ---
 
@@ -342,6 +377,7 @@ Print the output to the user so they can see what the daily digest will look lik
 - `references/output-format.md` — note template
 - `references/source-scoring.md` — scoring rubric
 - `references/user-guide.md` — user-facing help and setup instructions
+- `references/github-actions.md` — GitHub Actions cloud scheduling setup
 - `scripts/run_search.py` — unified search entry point
 - `scripts/run_daily.py` — daily batch runner
 - `scripts/send_email.py` — Gmail SMTP sender

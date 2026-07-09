@@ -30,12 +30,15 @@ def _make_ssl_context() -> ssl.SSLContext:
 
 _SSL_CONTEXT = _make_ssl_context()
 
-CONFIG_DIR = Path.home() / ".claude" / "skills" / "topic-monitor"
+CONFIG_DIR = Path(os.environ.get("TOPIC_MONITOR_CONFIG_DIR", Path.home() / ".claude" / "skills" / "topic-monitor")).expanduser()
 KEY_FILE = CONFIG_DIR / "twitter_api_key"
 API_BASE = "https://api.twitterapi.io"
 
 
 def load_api_key() -> str | None:
+    env_key = os.environ.get("TWITTER_API_KEY")
+    if env_key:
+        return env_key.strip()
     if KEY_FILE.exists():
         key = KEY_FILE.read_text().strip()
         return key if key else None

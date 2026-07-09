@@ -16,13 +16,14 @@ Usage:
 
 import sys
 import argparse
+import os
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
-CONFIG_DIR = Path.home() / ".claude" / "skills" / "topic-monitor"
+CONFIG_DIR = Path(os.environ.get("TOPIC_MONITOR_CONFIG_DIR", Path.home() / ".claude" / "skills" / "topic-monitor")).expanduser()
 APP_PASSWORD_FILE = CONFIG_DIR / "gmail_app_password"
 SENDER_EMAIL_FILE = CONFIG_DIR / "gmail_sender"
 
@@ -32,8 +33,12 @@ SMTP_PORT = 587
 
 def load_credentials() -> tuple[str | None, str | None]:
     """Returns (sender_email, app_password) or (None, None) if not configured."""
-    sender = SENDER_EMAIL_FILE.read_text().strip() if SENDER_EMAIL_FILE.exists() else None
-    password = APP_PASSWORD_FILE.read_text().strip() if APP_PASSWORD_FILE.exists() else None
+    sender = os.environ.get("GMAIL_SENDER")
+    password = os.environ.get("GMAIL_APP_PASSWORD")
+    if sender and password:
+        return sender.strip(), password.strip()
+    sender = sender or (SENDER_EMAIL_FILE.read_text().strip() if SENDER_EMAIL_FILE.exists() else None)
+    password = password or (APP_PASSWORD_FILE.read_text().strip() if APP_PASSWORD_FILE.exists() else None)
     return sender, password
 
 
@@ -143,7 +148,8 @@ def send_email(
 
 
 def is_configured() -> bool:
-    return APP_PASSWORD_FILE.exists() and SENDER_EMAIL_FILE.exists()
+    sender, password = load_credentials()
+    return bool(sender and password)
 
 
 def main():

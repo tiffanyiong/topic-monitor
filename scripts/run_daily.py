@@ -17,6 +17,7 @@ import re
 import os
 from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 SCRIPTS_DIR = Path(__file__).parent
@@ -26,7 +27,7 @@ import search as web_search_module
 import twitter_search as twitter_module
 import send_email as email_module
 
-CONFIG_DIR = Path.home() / ".claude" / "skills" / "topic-monitor"
+CONFIG_DIR = Path(os.environ.get("TOPIC_MONITOR_CONFIG_DIR", Path.home() / ".claude" / "skills" / "topic-monitor")).expanduser()
 SUBSCRIPTIONS_FILE = CONFIG_DIR / "subscriptions.md"
 CONFIG_FILE = CONFIG_DIR / "config.md"
 LAST_SENT_FILE = CONFIG_DIR / "last_sent_date"
@@ -40,16 +41,35 @@ def parse_config() -> dict:
         "email_recipient": None,
         "scheduled_window_hours": 24,
         "schedule_delivery": "email",
+        "schedule_time": "08:00",
+        "schedule_timezone": "America/Los_Angeles",
     }
-    if not CONFIG_FILE.exists():
-        return config
-    for line in CONFIG_FILE.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if ":" in line:
-            key, _, value = line.partition(":")
-            config[key.strip()] = value.strip().strip('"')
+    if CONFIG_FILE.exists():
+        for line in CONFIG_FILE.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if ":" in line:
+                key, _, value = line.partition(":")
+                config[key.strip()] = value.strip().strip('"')
+
+    env_overrides = {
+        "EMAIL_RECIPIENT": "email_recipient",
+        "EMAIL_RECIPIENTS": "email_recipients",
+        "SCHEDULED_WINDOW_HOURS": "scheduled_window_hours",
+        "SCHEDULE_TIME": "schedule_time",
+        "SCHEDULE_TIMEZONE": "schedule_timezone",
+        "SCHEDULE_DELIVERY": "schedule_delivery",
+        "EMAIL_SEND_DIRECT": "email_send_direct",
+        "OBSIDIAN_VAULT": "obsidian_vault",
+        "DEFAULT_DELIVERY": "default_delivery",
+        "DEFAULT_SUBFOLDER": "default_subfolder",
+    }
+    for env_key, config_key in env_overrides.items():
+        env_value = os.environ.get(env_key)
+        if env_value:
+            config[config_key] = env_value.strip()
+
     config["scheduled_window_hours"] = int(config.get("scheduled_window_hours", 24))
     return config
 
@@ -139,10 +159,13 @@ GEMINI_KEY_FILE = CONFIG_DIR / "gemini_api_key"
 
 
 def load_gemini_key() -> str | None:
+    env_key = os.environ.get("GEMINI_API_KEY")
+    if env_key:
+        return env_key.strip()
     if GEMINI_KEY_FILE.exists():
         key = GEMINI_KEY_FILE.read_text().strip()
         return key if key else None
-    return os.environ.get("GEMINI_API_KEY")
+    return None
 
 
 def synthesize_topic(result: dict, api_key: str) -> dict:
@@ -453,14 +476,49 @@ def build_email_html(results: list[dict], run_date: str) -> str:
 </body></html>"""
 
 
-def already_sent_today() -> bool:
+def current_local_datetime(config: dict) -> datetime:
+    timezone_name = config.get("schedule_timezone", "America/Los_Angeles")
+    try:
+        return datetime.now(ZoneInfo(timezone_name))
+    except Exception:
+        print(f"[run_daily] Unknown timezone {timezone_name!r}; falling back to local machine time.", file=sys.stderr)
+        return datetime.now()
+
+
+def scheduled_hour(config: dict) -> int:
+    raw_time = str(config.get("schedule_time", "08:00"))
+    match = re.match(r"^(\d{1,2})(?::(\d{2}))?$", raw_time)
+    if not match:
+        print(f"[run_daily] Invalid schedule_time {raw_time!r}; using 08:00.", file=sys.stderr)
+        return 8
+    return max(0, min(23, int(match.group(1))))
+
+
+def should_run_for_schedule(config: dict) -> bool:
+    now = current_local_datetime(config)
+    target_hour = scheduled_hour(config)
+    if now.hour != target_hour:
+        print(
+            f"[run_daily] Not scheduled now: local time is {now:%Y-%m-%d %H:%M} "
+            f"in {config.get('schedule_timezone')}, target hour is {target_hour:02d}:00. Skipping.",
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
+def today_iso(config: dict) -> str:
+    return current_local_datetime(config).date().isoformat()
+
+
+def already_sent_today(config: dict) -> bool:
     if not LAST_SENT_FILE.exists():
         return False
-    return LAST_SENT_FILE.read_text().strip() == date.today().isoformat()
+    return LAST_SENT_FILE.read_text().strip() == today_iso(config)
 
 
-def mark_sent_today():
-    LAST_SENT_FILE.write_text(date.today().isoformat())
+def mark_sent_today(config: dict):
+    LAST_SENT_FILE.write_text(today_iso(config))
 
 
 def main():
@@ -468,19 +526,23 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Print report without sending email")
     parser.add_argument("--topic", default=None, help="Run a single topic only")
     parser.add_argument("--force", action="store_true", help="Skip date-gate check and run regardless")
+    parser.add_argument("--respect-schedule", action="store_true", help="Only run during configured schedule_time hour")
     args = parser.parse_args()
+
+    config = parse_config()
 
     # Date-gate: only send once per day, and not before EARLIEST_HOUR
     if not args.dry_run and not args.force:
-        current_hour = datetime.now().hour
-        if current_hour < EARLIEST_HOUR:
-            print(f"[run_daily] Too early ({current_hour}h < {EARLIEST_HOUR}h minimum). Skipping.", file=sys.stderr)
+        now = current_local_datetime(config)
+        if args.respect_schedule and not should_run_for_schedule(config):
             sys.exit(0)
-        if already_sent_today():
-            print(f"[run_daily] Digest already sent today ({date.today().isoformat()}). Skipping.", file=sys.stderr)
+        if now.hour < EARLIEST_HOUR:
+            print(f"[run_daily] Too early ({now.hour}h < {EARLIEST_HOUR}h minimum). Skipping.", file=sys.stderr)
+            sys.exit(0)
+        if already_sent_today(config):
+            print(f"[run_daily] Digest already sent today ({today_iso(config)}). Skipping.", file=sys.stderr)
             sys.exit(0)
 
-    config = parse_config()
     subscriptions = parse_subscriptions()
 
     if not subscriptions:
@@ -495,7 +557,7 @@ def main():
         sys.exit(0)
 
     window_hours = int(config.get("scheduled_window_hours", 24))
-    run_date = date.today().isoformat()
+    run_date = today_iso(config)
 
     print(f"[run_daily] Running {len(active)} topic(s) with {window_hours}h window...", file=sys.stderr)
 
@@ -572,8 +634,8 @@ def main():
             print(f"[run_daily] ✗ Failed to send to {recipient}.", file=sys.stderr)
 
     if any_sent:
-        mark_sent_today()
-        print(f"[run_daily] Marked {date.today().isoformat()} as sent. Won't run again until tomorrow.", file=sys.stderr)
+        mark_sent_today(config)
+        print(f"[run_daily] Marked {today_iso(config)} as sent. Won't run again until tomorrow.", file=sys.stderr)
 
 
 if __name__ == "__main__":

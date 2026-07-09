@@ -13,14 +13,15 @@ A Claude Code skill that monitors trending news and tweets for any keyword, scor
 - **Scores every source** on 4 dimensions: Recency, Authority, Engagement, Depth (max 10)
 - **Synthesizes** an AI report per topic using Gemini: executive summary, article highlights, trending themes
 - **Emails** a card-style HTML digest to any number of recipients
-- **Runs automatically** via macOS launchd — fires every hour from 8am to 10pm, sends once per day on your first open, resets the next day
+- **Runs automatically** via macOS launchd, or in the cloud with GitHub Actions when your laptop is closed
 
-### Two delivery modes
+### Delivery modes
 
 | Trigger | Destination | Format |
 |---|---|---|
 | Manual `/topic-monitor KEYWORD` | **Obsidian vault** | Full markdown note, one file per topic per day |
-| Automatic (launchd every 12h) | **Gmail inbox** | Card-style HTML digest covering all active topics |
+| Automatic on Mac (launchd) | **Gmail inbox** | Card-style HTML digest covering all active topics |
+| Automatic in cloud (GitHub Actions) | **Gmail inbox** | Same HTML digest, runs even when your laptop is off |
 
 **Manual searches** save to your Obsidian vault automatically (if `obsidian_vault` is set in `config.md`):
 ```
@@ -132,8 +133,7 @@ which python3
 nano ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist
 # Replace: /Library/Frameworks/Python.framework/Versions/3.14/bin/python3
 # Replace: /Users/YOUR_USERNAME with your actual username (appears 3 times)
-# Optional: adjust the StartCalendarInterval hours to match when you open your laptop
-#   Default is 8am–10pm. Remove hours you'd never open your laptop.
+# Optional: adjust the StartCalendarInterval hour if you do not want 8am.
 
 # Register with launchd
 cp ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist \
@@ -141,7 +141,30 @@ cp ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist \
 launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
 ```
 
-The plist fires every hour from **8am to 10pm**. The script sends the digest on the first hit of the day and silently skips the rest. If your Mac is asleep when a tick fires, the missed tick runs the moment you open the lid — so you get the email right when you wake up your laptop, no matter what time that is.
+The plist fires once per day at **8:00am local time** by default. If your Mac is asleep or off, local delivery still depends on macOS being awake later; use GitHub Actions below when you need the digest to send even while your laptop is off.
+
+
+### 6b. Cloud scheduling with GitHub Actions
+
+Use this if you want Topic Monitor to run even when your laptop is closed or powered off. Fork this repo, keep your topics in `subscriptions.md`, then add these repository secrets in GitHub:
+
+```
+GEMINI_API_KEY
+GMAIL_SENDER
+GMAIL_APP_PASSWORD
+EMAIL_RECIPIENTS
+TWITTER_API_KEY        # optional
+```
+
+The included `.github/workflows/daily.yml` runs hourly in UTC, then `run_daily.py --respect-schedule` sends only during your configured local hour. Set optional repository variables if you want to change the default schedule:
+
+```
+SCHEDULE_TIME=08:00
+SCHEDULE_TIMEZONE=America/Los_Angeles
+SCHEDULED_WINDOW_HOURS=24
+```
+
+Users can ask their agent: `/topic-monitor setup github-actions`. The skill will guide them through forking/cloning, adding GitHub Secrets, checking topics, and running the workflow manually once.
 
 ### 7. Add your first topic and test
 
