@@ -1,191 +1,188 @@
-# 📡 Topic Monitor
+# Topic Monitor
 
-A Claude Code skill that monitors trending news and tweets for any keyword, scores each source for quality, synthesizes an AI intelligence report using Gemini, and delivers it as a polished HTML digest email — automatically, every time your Mac wakes up.
+Topic Monitor is a Claude/Codex skill that tracks fresh news and optional Twitter/X posts for followed topics, scores source quality, synthesizes a concise Gemini-powered intelligence report, and emails a polished HTML digest automatically from GitHub Actions.
 
-![digest preview](https://img.shields.io/badge/delivery-Gmail%20HTML%20digest-blue) ![ai](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-orange) ![platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+By default, the cloud scheduler sends the digest every day at **8:00 AM** in the configured timezone. Your laptop does not need to be awake.
 
----
-
-## What it does
-
-- **Searches** Google News RSS for any keyword — no scraping, no API key needed for web results
-- **Optionally searches Twitter/X** (Latest + Top posts, English only, balanced feed)
-- **Scores every source** on 4 dimensions: Recency, Authority, Engagement, Depth (max 10)
-- **Synthesizes** an AI report per topic using Gemini: executive summary, article highlights, trending themes
-- **Emails** a card-style HTML digest to any number of recipients
-- **Runs automatically** via macOS launchd, or in the cloud with GitHub Actions when your laptop is closed
-
-### Delivery modes
-
-| Trigger | Destination | Format |
-|---|---|---|
-| Manual `/topic-monitor KEYWORD` | **Obsidian vault** | Full markdown note, one file per topic per day |
-| Automatic on Mac (launchd) | **Gmail inbox** | Card-style HTML digest covering all active topics |
-| Automatic in cloud (GitHub Actions) | **Gmail inbox** | Same HTML digest, runs even when your laptop is off |
-
-**Manual searches** save to your Obsidian vault automatically (if `obsidian_vault` is set in `config.md`):
-```
-Research/Topic Monitor/
-├── openAI/
-│   └── 2026-05-01.md
-├── claude code/
-│   └── 2026-05-01.md
-└── adobe/
-    └── 2026-05-01.md
-```
-
-See [examples/2026-05-01 buildinpublic.md](examples/2026-05-01%20buildinpublic.md) for a real example of what a manual Obsidian note looks like.
-
-**Scheduled runs** send an email digest only — nothing is written to Obsidian. This keeps your vault clean while still delivering the daily summary to your inbox.
-
-### Example email digest
-
-Each topic gets its own card with:
-- Executive Summary (AI-written, 3–4 sentences)
-- 📰 Top Articles — clickable links, scored
-- 💡 Article Highlights — top 3 with insight blurbs, linked to source
-- 📈 What's Trending — dominant themes across all sources
-- 🐦 Top Tweets — when Twitter is enabled for that topic
-- ▸ Source Quality Table — collapsible, full breakdown
-
-![Email digest — topic header and executive summary](examples/cc.jpg)
-![Email digest — article highlights and trending themes](examples/cc2.jpg)
-![Email digest — top tweets and source quality table](examples/cc3.jpg)
+![delivery](https://img.shields.io/badge/delivery-Gmail%20HTML%20digest-blue) ![ai](https://img.shields.io/badge/AI-Gemini%20Flash-orange) ![scheduler](https://img.shields.io/badge/scheduler-GitHub%20Actions-black)
 
 ---
 
-## Requirements
+## What It Does
 
-- macOS (uses launchd for scheduling)
-- [Claude Code](https://claude.ai/code) CLI
-- Python 3.10+
-- A Gmail account + [App Password](https://myaccount.google.com/apppasswords)
-- A [Gemini API key](https://aistudio.google.com/apikey) (free tier works — ~$0.001 per run)
-- _(Optional)_ A [TwitterAPI.io](https://twitterapi.io) key ($1 free credit included)
+- Searches Google News RSS for followed keywords; no web-search API key required.
+- Optionally searches Twitter/X via TwitterAPI.io for topics with `twitter: true`.
+- Scores every source for recency, authority, engagement, and depth.
+- Uses Gemini to synthesize executive summaries, article highlights, and trending themes.
+- Sends one HTML email digest covering all active topics.
+- Runs in GitHub Actions, so scheduled delivery works even when your computer is off.
 
----
+## Default Schedule
 
-## Installation
+The included workflow runs hourly in UTC, but `scripts/run_daily.py --respect-schedule` only sends during the configured local hour.
 
-### 1. Clone into your Claude skills directory
+Default values:
 
-```bash
-git clone https://github.com/tiffanyiong/topic-monitor \
-  ~/.claude/skills/topic-monitor
-```
-
-### 2. Install Python dependencies
-
-```bash
-pip3 install google-genai certifi
-```
-
-### 3. Configure your settings
-
-```bash
-cp ~/.claude/skills/topic-monitor/config.example.md \
-   ~/.claude/skills/topic-monitor/config.md
-```
-
-Edit `config.md` and fill in your values:
-
-```
-obsidian_vault: /Users/YOUR_USERNAME/path/to/obsidian    # optional
-email_recipients: you@gmail.com                          # comma-separated
-schedule_timezone: America/Los_Angeles                   # your timezone
-```
-
-### 4. Save your Gemini API key
-
-Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey), then:
-
-```bash
-echo "YOUR_GEMINI_API_KEY" > ~/.claude/skills/topic-monitor/gemini_api_key
-chmod 600 ~/.claude/skills/topic-monitor/gemini_api_key
-```
-
-### 5. Set up Gmail delivery
-
-You need a Gmail [App Password](https://myaccount.google.com/apppasswords) (not your regular password).
-
-**Step 1** — Enable 2-Step Verification at [myaccount.google.com/security](https://myaccount.google.com/security)
-
-**Step 2** — Create an App Password:
-1. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-2. Select app: **Mail** → device: **Other** → name it `topic-monitor`
-3. Click **Generate** and copy the 16-character password
-
-**Step 3** — Run the setup wizard in Claude Code:
-```
-/topic-monitor setup email
-```
-This saves your credentials securely (chmod 600) and tests the connection.
-
-### 6. Set up auto-scheduling (macOS launchd)
-
-Edit the included plist to replace the Python path and username with yours:
-
-```bash
-# Find your Python path
-which python3
-
-# Edit the plist
-nano ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist
-# Replace: /Library/Frameworks/Python.framework/Versions/3.14/bin/python3
-# Replace: /Users/YOUR_USERNAME with your actual username (appears 3 times)
-# Optional: adjust the StartCalendarInterval hour if you do not want 8am.
-
-# Register with launchd
-cp ~/.claude/skills/topic-monitor/com.tiffany.topic-monitor.plist \
-   ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
-```
-
-The plist fires once per day at **8:00am local time** by default. If your Mac is asleep or off, local delivery still depends on macOS being awake later; use GitHub Actions below when you need the digest to send even while your laptop is off.
-
-
-### 6b. Cloud scheduling with GitHub Actions
-
-Use this if you want Topic Monitor to run even when your laptop is closed or powered off. Fork this repo, keep your topics in `subscriptions.md`, then add these repository secrets in GitHub:
-
-```
-GEMINI_API_KEY
-GMAIL_SENDER
-GMAIL_APP_PASSWORD
-EMAIL_RECIPIENTS
-TWITTER_API_KEY        # optional
-```
-
-The included `.github/workflows/daily.yml` runs hourly in UTC, then `run_daily.py --respect-schedule` sends only during your configured local hour. Set optional repository variables if you want to change the default schedule:
-
-```
+```text
 SCHEDULE_TIME=08:00
 SCHEDULE_TIMEZONE=America/Los_Angeles
 SCHEDULED_WINDOW_HOURS=24
 ```
 
-Users can ask their agent: `/topic-monitor setup github-actions`. The skill will guide them through forking/cloning, adding GitHub Secrets, checking topics, and running the workflow manually once.
+So out of the box, the digest is intended to send every morning at **8:00 AM Pacific time**. Change the repository Variables if you want a different local time or timezone.
 
-### 7. Add your first topic and test
+## Delivery Modes
 
+| Trigger | Destination | Format |
+|---|---|---|
+| GitHub Actions schedule | Gmail inbox | HTML digest for all active topics |
+| GitHub Actions manual run | Gmail inbox | Immediate test digest |
+| Manual `/topic-monitor KEYWORD` | Chat, local file, or Obsidian if configured | One-off research note |
+
+---
+
+## Quick Setup For Your Own Fork
+
+### 1. Fork Or Clone This Repo
+
+Fork `tiffanyiong/topic-monitor` into your own GitHub account, or clone it into your own repository. GitHub Actions and Secrets must live in the repository that will run your digest.
+
+If you also want the skill available to your local agent, clone it into your skills directory:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/topic-monitor \
+  ~/.claude/skills/topic-monitor
 ```
-/topic-monitor follow openAI
-/topic-monitor test run
-/topic-monitor test email
+
+### 2. Install Local Dependencies For Manual Testing
+
+```bash
+pip3 install google-genai certifi
+```
+
+GitHub Actions installs these automatically in the cloud.
+
+### 3. Add Or Edit Topics
+
+Edit `subscriptions.md` in your repo. Each enabled topic appears in the daily digest.
+
+```yaml
+- keyword: openAI
+  enabled: true
+  days: 1
+  twitter: false
+```
+
+Set `twitter: true` only after adding the optional `TWITTER_API_KEY` secret.
+
+### 4. Add Required GitHub Secrets
+
+In your fork, go to **Settings -> Secrets and variables -> Actions -> New repository secret** and add:
+
+| Secret | What to enter |
+|---|---|
+| `GEMINI_API_KEY` | Gemini API key from https://aistudio.google.com/apikey |
+| `GMAIL_SENDER` | Gmail address that sends the digest |
+| `GMAIL_APP_PASSWORD` | Gmail App Password, not your normal Gmail password |
+| `EMAIL_RECIPIENTS` | Comma-separated recipient list, e.g. `you@gmail.com,friend@gmail.com` |
+
+Optional:
+
+| Secret | What to enter |
+|---|---|
+| `TWITTER_API_KEY` | TwitterAPI.io key for topics with `twitter: true` |
+
+Never commit these values to the repo. They belong only in GitHub Secrets.
+
+### 5. Set Optional GitHub Variables
+
+In **Settings -> Secrets and variables -> Actions -> Variables**, set these if the defaults are not right for you:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SCHEDULE_TIME` | `08:00` | Local time to send the digest |
+| `SCHEDULE_TIMEZONE` | `America/Los_Angeles` | IANA timezone for the schedule |
+| `SCHEDULED_WINDOW_HOURS` | `24` | How far back each scheduled search looks |
+
+Example values:
+
+```text
+SCHEDULE_TIME=08:00
+SCHEDULE_TIMEZONE=America/New_York
+SCHEDULED_WINDOW_HOURS=24
+```
+
+### 6. Enable And Test The Workflow
+
+Open the repo's **Actions** tab. If GitHub asks you to enable workflows for the fork, enable them.
+
+Then run **Topic Monitor Daily Digest -> Run workflow** once. Manual runs use `--force`, so they send immediately instead of waiting for 8:00 AM.
+
+---
+
+## Agent-Guided Setup
+
+After installing the skill, ask your agent:
+
+```text
+/topic-monitor setup github-actions
+```
+
+The agent should guide you through:
+
+- Confirming your fork/repo is the one that will run Actions.
+- Choosing a send time; default is **8:00 AM**.
+- Choosing a timezone; default is `America/Los_Angeles`.
+- Confirming or adding at least one enabled topic in `subscriptions.md`.
+- Collecting the names of required secrets and directing you to enter the values in GitHub Secrets.
+- Optionally using interactive `gh secret set ...` commands so secrets are typed into GitHub CLI prompts, not pasted into chat.
+- Setting optional GitHub Variables for schedule time and timezone.
+- Running the workflow manually once to verify email delivery.
+
+The agent should not ask you to paste long-lived API keys or Gmail App Passwords into chat unless you explicitly accept that risk. Prefer GitHub's secret UI or interactive GitHub CLI prompts.
+
+---
+
+## Using GitHub CLI Instead Of The Web UI
+
+If `gh` is installed and authenticated, you can set secrets interactively from the repo root:
+
+```bash
+gh secret set GEMINI_API_KEY
+gh secret set GMAIL_SENDER
+gh secret set GMAIL_APP_PASSWORD
+gh secret set EMAIL_RECIPIENTS
+gh secret set TWITTER_API_KEY       # optional
+```
+
+Set or update schedule variables:
+
+```bash
+gh variable set SCHEDULE_TIME --body "08:00"
+gh variable set SCHEDULE_TIMEZONE --body "America/Los_Angeles"
+gh variable set SCHEDULED_WINDOW_HOURS --body "24"
+```
+
+Run a test digest:
+
+```bash
+gh workflow run "Topic Monitor Daily Digest"
 ```
 
 ---
 
 ## Usage
 
-### One-off search (saves to Obsidian)
-```
+### One-Off Search
+
+```text
 /topic-monitor openAI
 /topic-monitor "bay area startups"
 ```
 
-### Manage followed topics
-```
+### Manage Followed Topics
+
+```text
 /topic-monitor follow claude code
 /topic-monitor unfollow xai
 /topic-monitor pause adobe
@@ -193,50 +190,33 @@ Users can ask their agent: `/topic-monitor setup github-actions`. The skill will
 /topic-monitor list
 ```
 
-### Manage recipients
-```
+### Manage Recipients For Cloud Digest
+
+For GitHub Actions, update the `EMAIL_RECIPIENTS` repository secret. For local/manual config files, these commands can still update `config.md`:
+
+```text
 /topic-monitor set recipients add friend@gmail.com
 /topic-monitor set recipients remove friend@gmail.com
 /topic-monitor set recipients you@gmail.com, colleague@gmail.com
 ```
 
-### Twitter/X (optional)
-```
-/topic-monitor setup twitter
-/topic-monitor set twitter openAI on     # enable per topic
-/topic-monitor set twitter on            # enable for all topics
-```
+### Twitter/X
 
-### Settings
-```
-/topic-monitor set window 48h            # change recency window
-/topic-monitor set email you@gmail.com   # change primary recipient
+```text
+/topic-monitor set twitter openAI on
+/topic-monitor set twitter on
 ```
 
-### Testing & debugging
+Remember to add `TWITTER_API_KEY` in GitHub Secrets before enabling Twitter-backed topics.
+
+### Testing
+
+```text
+/topic-monitor test run
+/topic-monitor test email
 ```
-/topic-monitor test run                  # dry-run, no email sent
-/topic-monitor test email                # send a test email
-```
 
-### Launchd management
-```bash
-# Trigger manually
-launchctl start com.tiffany.topic-monitor
-
-# Check status
-launchctl list | grep topic-monitor
-
-# View logs
-tail -f ~/.claude/skills/topic-monitor/logs/daily.log
-tail -f ~/.claude/skills/topic-monitor/logs/daily.error.log
-
-# Pause auto-runs
-launchctl unload ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
-
-# Resume
-launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
-```
+For cloud delivery, the most realistic test is the GitHub Actions manual run because it uses the same Secrets and runner environment as the daily digest.
 
 ---
 
@@ -246,70 +226,86 @@ Each source is scored across 4 dimensions (max 2.5 each = 10 total):
 
 | Dimension | Criteria |
 |---|---|
-| **Recency** | ≤1 day = 2.5 · ≤7 days = 2.0 · ≤30 days = 1.5 · ≤6 months = 1.0 |
-| **Authority** | Reuters/BBC/NYT/arXiv = 2.5 · TechCrunch/Wired = 2.0 · Other = 1.0 |
-| **Engagement** | Google News inclusion = 1.5 · Twitter engagement scored 0.5–2.5 |
-| **Depth** | ≥800 words = 2.5 · ≥400 = 2.0 · ≥100 = 1.5 · unknown = 1.0 |
+| Recency | <=1 day = 2.5; <=7 days = 2.0; <=30 days = 1.5; <=6 months = 1.0 |
+| Authority | Reuters/BBC/NYT/arXiv = 2.5; TechCrunch/Wired = 2.0; Other = 1.0 |
+| Engagement | Google News inclusion = 1.5; Twitter engagement scored 0.5-2.5 |
+| Depth | >=800 words = 2.5; >=400 = 2.0; >=100 = 1.5; unknown = 1.0 |
 
-**Score thresholds:** 8–10 = feature prominently · 6–7.5 = include · 4–5.5 = include with caveat · <4 = flag ⚠️
+Score thresholds: 8-10 feature prominently; 6-7.5 include; 4-5.5 include with caveat; <4 flag.
 
 ---
 
 ## File Structure
 
-```
-~/.claude/skills/topic-monitor/
-├── SKILL.md                    # Claude skill definition
-├── config.md                   # Your personal settings (gitignored)
-├── config.example.md           # Template — copy to config.md
-├── subscriptions.md            # Your followed topics
-├── gemini_api_key              # Gemini key (gitignored, chmod 600)
-├── gmail_app_password          # Gmail App Password (gitignored, chmod 600)
-├── gmail_sender                # Gmail address (gitignored, chmod 600)
-├── twitter_api_key             # TwitterAPI.io key (gitignored, chmod 600)
-├── logs/                       # launchd run logs (gitignored)
+```text
+topic-monitor/
+├── .github/workflows/daily.yml  # GitHub Actions cloud scheduler
+├── SKILL.md                     # Agent workflow instructions
+├── README.md                    # User setup guide
+├── config.example.md            # Optional local config template
+├── subscriptions.md             # Followed topics; safe to edit and commit
 ├── scripts/
-│   ├── run_daily.py            # launchd entry point — runs all subscriptions
-│   ├── run_search.py           # Manual search entry point
-│   ├── search.py               # Google News RSS fetcher + scorer
-│   ├── twitter_search.py       # TwitterAPI.io fetcher + scorer
-│   └── send_email.py           # Gmail SMTP sender + setup wizard
+│   ├── run_daily.py             # Scheduled digest entry point
+│   ├── run_search.py            # Manual search entry point
+│   ├── search.py                # Google News RSS fetcher + scorer
+│   ├── twitter_search.py        # TwitterAPI.io fetcher + scorer
+│   └── send_email.py            # Gmail SMTP sender
 └── references/
-    ├── output-format.md        # Obsidian note template
-    ├── source-scoring.md       # Scoring rubric reference
-    └── user-guide.md           # Full command reference
+    ├── github-actions.md        # Agent setup guide for cloud scheduling
+    ├── output-format.md         # Manual note template
+    ├── source-scoring.md        # Scoring rubric reference
+    └── user-guide.md            # Full command reference
 ```
 
 ---
 
 ## Security
 
-All credential files are `chmod 600` — readable only by your user account. They are also listed in `.gitignore` and will never be committed.
+This repository should never contain real API keys, Gmail App Passwords, or private credential files.
 
-> **Never** put your API keys, Gmail App Password, or email address in any file that isn't gitignored.
+Secrets are intentionally read from GitHub Actions Secrets or local gitignored files:
+
+- `GEMINI_API_KEY` or local `gemini_api_key`
+- `GMAIL_SENDER` or local `gmail_sender`
+- `GMAIL_APP_PASSWORD` or local `gmail_app_password`
+- `EMAIL_RECIPIENTS` or local `config.md`
+- `TWITTER_API_KEY` or local `twitter_api_key`
+
+The following local files are gitignored and must stay uncommitted:
+
+```text
+config.md
+gemini_api_key
+gmail_app_password
+gmail_sender
+twitter_api_key
+logs/
+last_sent_date
+```
+
+Before pushing changes, you can check tracked files with:
+
+```bash
+git grep -n "GMAIL_APP_PASSWORD\|GEMINI_API_KEY\|TWITTER_API_KEY" -- .
+```
+
+Seeing placeholder names is expected. Seeing real secret values is not.
 
 ---
 
 ## AI Synthesis
 
-Uses **Gemini** with a model fallback chain (tries in order):
+Uses Gemini with a model fallback chain:
+
 1. `gemini-3.1-flash-lite-preview`
 2. `gemini-2.5-flash-lite`
 3. `gemini-3-flash-preview`
 4. `gemini-2.5-flash`
 
-**Cost**: ~$0.001–$0.005 per daily run. Effectively free on the Gemini free tier.
+Cost is usually tiny on the Gemini free tier for a small daily digest.
 
 ---
 
 ## License
 
 MIT
-
----
-
-## Contributing
-
-This skill started as a personal project, but if you find it useful, improvements are very welcome! Feel free to open an issue if something isn't working, suggest a new feature, or submit a pull request — whether it's a bug fix, a new search source, or a better email template. No contribution is too small.
-
-If you run into any trouble setting it up, don't hesitate to open an issue and describe what went wrong. Happy to help!

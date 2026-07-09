@@ -12,81 +12,41 @@ Research trending content about any keyword. Python scripts do all the heavy fet
 
 ## First-Time Setup (new users)
 
-**1. Install dependencies**
-```bash
-pip3 install google-genai certifi
+Topic Monitor's automation path is **GitHub Actions cloud scheduling**. New-user setup should use GitHub Actions, not local macOS scheduling.
+
+**1. Fork or clone the repository**
+
+The user should run automation from their own GitHub repo or fork. Credentials must live in that repo's GitHub Secrets, not in committed files.
+
+**2. Add followed topics**
+
+Make sure `subscriptions.md` has at least one enabled topic:
+```yaml
+- keyword: openAI
+  enabled: true
+  days: 1
+  twitter: false
 ```
 
-**2. Copy config and fill in your values**
-```bash
-cp ~/.claude/skills/topic-monitor/config.example.md \
-   ~/.claude/skills/topic-monitor/config.md
-# Edit config.md: set your obsidian_vault path and email_recipients
-```
+**3. Set up GitHub Actions cloud scheduling**
 
-**3. Set up Gmail for email delivery**
-```
-/topic-monitor setup email
-```
-You'll need a [Gmail App Password](https://myaccount.google.com/apppasswords) (not your regular password). The setup wizard will guide you.
+Route to **GitHub Actions Setup Workflow** for `/topic-monitor setup github-actions`. The workflow must prompt for or confirm:
 
-**4. Set up Gemini for AI synthesis**
+- Send time, default `08:00`
+- Timezone, default `America/Los_Angeles`
+- Search window, default `24` hours
+- Required GitHub Secrets: `GEMINI_API_KEY`, `GMAIL_SENDER`, `GMAIL_APP_PASSWORD`, `EMAIL_RECIPIENTS`
+- Optional GitHub Secret: `TWITTER_API_KEY`
 
-Save your [Gemini API key](https://aistudio.google.com/apikey) (free tier works):
-```bash
-echo "YOUR_GEMINI_API_KEY" > ~/.claude/skills/topic-monitor/gemini_api_key
-chmod 600 ~/.claude/skills/topic-monitor/gemini_api_key
-```
+The agent must direct users to enter secret values through GitHub Secrets UI or interactive `gh secret set` prompts. Do not ask users to paste long-lived secrets into chat unless they explicitly choose that risk.
 
-**5. (Optional) Set up Twitter/X**
-```
-/topic-monitor setup twitter
-```
-Requires a [TwitterAPI.io](https://twitterapi.io) key ($1 free credit included).
+**4. Test cloud delivery**
 
-**6. Set up auto-scheduling on macOS**
+After secrets and variables are set, instruct the user to run **Topic Monitor Daily Digest -> Run workflow** in GitHub Actions. Manual workflow runs send immediately with `--force`; scheduled runs send at the configured local time.
 
-First, decide what fixed local time you'd like to receive your digest. The default plist runs once per day at 8:00am.
+Default scheduled delivery is every day at **8:00 AM** in `America/Los_Angeles`, unless repository Variables override it.
 
-Edit `com.tiffany.topic-monitor.plist`:
-- Replace the Python path (find yours with `which python3`)
-- Replace `/Users/YOUR_USERNAME` with your username
-- Adjust the `StartCalendarInterval` hour if you do not want 8am
-
-Then register it:
-```bash
-cp com.tiffany.topic-monitor.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.tiffany.topic-monitor.plist
-```
-
-The digest will run at the fixed local time when your Mac is awake. If the user needs delivery while their computer is off, use GitHub Actions cloud scheduling.
-
-**6b. Optional: cloud scheduling with GitHub Actions**
-
-Use this when the user wants the digest to run even if their computer is off. The workflow lives at `.github/workflows/daily.yml` and reads credentials from GitHub Secrets. To set it up, route to **GitHub Actions Setup Workflow**.
-
-Required GitHub Secrets:
-- `GEMINI_API_KEY`
-- `GMAIL_SENDER`
-- `GMAIL_APP_PASSWORD`
-- `EMAIL_RECIPIENTS`
-
-Optional GitHub Secret:
-- `TWITTER_API_KEY`
-
-Optional GitHub Variables:
-- `SCHEDULE_TIME` (default `08:00`)
-- `SCHEDULE_TIMEZONE` (default `America/Los_Angeles`)
-- `SCHEDULED_WINDOW_HOURS` (default `24`)
-
-**7. Add your first topic and test**
-```
-/topic-monitor follow openAI
-/topic-monitor test run
-/topic-monitor test email
-```
-
-> **Security note:** `config.md`, credential files (`gemini_api_key`, `gmail_app_password`, `gmail_sender`, `twitter_api_key`), and `logs/` are all gitignored. They live only on your local machine and are never committed.
+> Security note: `config.md`, credential files (`gemini_api_key`, `gmail_app_password`, `gmail_sender`, `twitter_api_key`), `last_sent_date`, and `logs/` are gitignored. Real API keys and app passwords must never be committed.
 
 ---
 
@@ -240,7 +200,7 @@ Recipients (all topics):
   1  tiffanyiong924@gmail.com
   2  roryzhang95@gmail.com
 
-Digest runs: local launchd at fixed time, or GitHub Actions cloud schedule
+Digest runs: GitHub Actions cloud schedule, default 8:00 AM daily
 ```
 
 3. Offer quick actions:
@@ -274,7 +234,7 @@ For `set recipients` commands:
 - `set recipients remove b@x.com` → read current `email_recipients`, remove that address, write back
 - After any change, confirm: "Digest will now be sent to: a@x.com, b@x.com"
 
-After any local schedule change: remind the user to reload the launchd plist. For GitHub Actions, update repository Variables instead.
+After any cloud schedule change: update GitHub repository Variables `SCHEDULE_TIME`, `SCHEDULE_TIMEZONE`, and optionally `SCHEDULED_WINDOW_HOURS`.
 After any `twitter` change: remind user that `/topic-monitor setup twitter` is needed if no key is saved.
 
 ---
@@ -323,13 +283,38 @@ For `/topic-monitor setup github-actions`:
 
 1. Read `references/github-actions.md` before guiding the user.
 2. Explain the model briefly: the user's fork runs `.github/workflows/daily.yml` in GitHub's cloud; secrets stay in their repo; their local laptop does not need to be on.
-3. Check whether the current skill/repo has `.github/workflows/daily.yml`. If it is missing, create it from the bundled template.
-4. Check `subscriptions.md`; if there are no enabled topics, ask the user to add one with `/topic-monitor follow KEYWORD`.
-5. Guide the user to set required GitHub Secrets: `GEMINI_API_KEY`, `GMAIL_SENDER`, `GMAIL_APP_PASSWORD`, `EMAIL_RECIPIENTS`. Mention optional `TWITTER_API_KEY`.
-6. Guide the user to set optional GitHub Variables: `SCHEDULE_TIME`, `SCHEDULE_TIMEZONE`, `SCHEDULED_WINDOW_HOURS`.
-7. If `gh` is available and authenticated, offer interactive commands like `gh secret set GEMINI_API_KEY`; do not ask the user to paste secrets into chat unless they explicitly choose that.
-8. Tell the user to run the workflow manually once from the GitHub Actions tab, or use `gh workflow run "Topic Monitor Daily Digest"` when available.
-9. On completion, remind them that Actions uses GitHub-hosted runners, so email can send even when their own machine is off.
+3. Confirm the target GitHub repository or fork. If the repo is local, inspect `git remote -v`; if it is missing a GitHub remote, tell the user to create/fork a repo first.
+4. Confirm `.github/workflows/daily.yml` exists. If it is missing, create it from the bundled template.
+5. Check `subscriptions.md`; if there are no enabled topics, prompt the user for their first keyword and add it with `enabled: true`, `days: 1`, `twitter: false`.
+6. Prompt for scheduling preferences:
+   - Send time: default `08:00`
+   - Timezone: default `America/Los_Angeles`
+   - Search window: default `24` hours
+   Tell the user these become GitHub Variables: `SCHEDULE_TIME`, `SCHEDULE_TIMEZONE`, `SCHEDULED_WINDOW_HOURS`.
+7. Prompt the user to prepare required secret values, but do not collect them in chat by default:
+   - `GEMINI_API_KEY`
+   - `GMAIL_SENDER`
+   - `GMAIL_APP_PASSWORD`
+   - `EMAIL_RECIPIENTS`
+   Optional: `TWITTER_API_KEY` for Twitter-enabled topics.
+8. Guide the user to enter secrets through GitHub UI or interactive CLI prompts. Prefer:
+   ```bash
+   gh secret set GEMINI_API_KEY
+   gh secret set GMAIL_SENDER
+   gh secret set GMAIL_APP_PASSWORD
+   gh secret set EMAIL_RECIPIENTS
+   gh secret set TWITTER_API_KEY
+   ```
+   For variables, use:
+   ```bash
+   gh variable set SCHEDULE_TIME --body "08:00"
+   gh variable set SCHEDULE_TIMEZONE --body "America/Los_Angeles"
+   gh variable set SCHEDULED_WINDOW_HOURS --body "24"
+   ```
+9. If the user explicitly pastes a secret into chat, warn that chat is not the safest place for long-lived credentials and recommend rotating it after setup.
+10. Tell the user to run the workflow manually once from the GitHub Actions tab, or use `gh workflow run "Topic Monitor Daily Digest"` when available.
+11. On completion, remind them that scheduled delivery defaults to 8:00 AM daily and runs in GitHub-hosted cloud infrastructure.
+12. Before committing or pushing setup changes, verify no real secrets are tracked with `git status --short` and a secret scan over tracked files.
 
 ---
 
