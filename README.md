@@ -190,6 +190,8 @@ gh workflow run "Topic Monitor Daily Digest"
 /topic-monitor list
 ```
 
+`follow` only updates `subscriptions.md`. If this is your first topic or your fork has not sent a cloud digest yet, run `/topic-monitor setup github-actions` once so your agent can guide you through GitHub Secrets, schedule Variables, and a manual Actions test run.
+
 ### Manage Recipients For Cloud Digest
 
 For GitHub Actions, update the `EMAIL_RECIPIENTS` repository secret. For local/manual config files, these commands can still update `config.md`:

@@ -154,6 +154,10 @@ For `/topic-monitor follow KEYWORD`:
      ```
 3. Confirm: "Added **KEYWORD** to your daily digest. It will appear in tomorrow's 8am email."
 4. Ask: "Want Twitter included for this topic? (`/topic-monitor set twitter KEYWORD on`)"
+5. If GitHub Actions cloud automation is not known to be configured, remind the user:
+   "To actually receive scheduled emails while your laptop is closed, run `/topic-monitor setup github-actions` once and add the required GitHub Secrets."
+
+Cloud automation is "known to be configured" only when the current repository has the workflow plus required GitHub Actions Secrets (`GEMINI_API_KEY`, `GMAIL_SENDER`, `GMAIL_APP_PASSWORD`, `EMAIL_RECIPIENTS`). If the agent cannot verify that, give the setup reminder.
 
 ---
 
@@ -315,6 +319,8 @@ For `/topic-monitor setup github-actions`:
 10. Tell the user to run the workflow manually once from the GitHub Actions tab, or use `gh workflow run "Topic Monitor Daily Digest"` when available.
 11. On completion, remind them that scheduled delivery defaults to 8:00 AM daily and runs in GitHub-hosted cloud infrastructure.
 12. Before committing or pushing setup changes, verify no real secrets are tracked with `git status --short` and a secret scan over tracked files.
+
+If a user adds a topic before completing this setup, remind them that `follow` only updates `subscriptions.md`; scheduled cloud email needs the GitHub Secrets and Variables above.
 
 ---
 

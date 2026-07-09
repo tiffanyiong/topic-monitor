@@ -68,6 +68,8 @@ gh variable set SCHEDULED_WINDOW_HOURS --body "24"
 9. Run **Topic Monitor Daily Digest -> Run workflow** once to test delivery.
 10. Before any commit/push, verify no secret values are tracked.
 
+If the user only ran `/topic-monitor follow KEYWORD`, explain that this adds the topic but does not configure cloud email by itself. Tell them to run `/topic-monitor setup github-actions` once so the agent can guide them through GitHub Secrets, Variables, and a manual test run.
+
 ## Security Rules
 
 - Never commit real API keys, Gmail App Passwords, or sender credentials.
