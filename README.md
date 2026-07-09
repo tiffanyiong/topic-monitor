@@ -17,6 +17,24 @@ By default, the cloud scheduler sends the digest every day at **8:00 AM** in the
 - Sends one HTML email digest covering all active topics.
 - Runs in GitHub Actions, so scheduled delivery works even when your computer is off.
 
+## Email Preview
+
+The scheduled digest is a polished HTML email with a summary header, one card per topic, source scoring, Gemini-generated highlights, trending themes, and optional Twitter/X sections.
+
+<img src="docs/images/email-preview-openai-summary.png" alt="Topic Monitor email preview showing the digest header, openAI topic card, executive summary, and top articles" width="760">
+
+<img src="docs/images/email-preview-openai-top-articles.png" alt="Topic Monitor email preview showing the top articles table" width="760">
+
+<img src="docs/images/email-preview-openai-highlights.png" alt="Topic Monitor email preview showing article highlights" width="760">
+
+<img src="docs/images/email-preview-openai-trending-quality.png" alt="Topic Monitor email preview showing trending themes and source quality table" width="760">
+
+<img src="docs/images/email-preview-claude-code-summary.png" alt="Topic Monitor email preview showing the claude code topic summary and top articles" width="760">
+
+<img src="docs/images/email-preview-claude-code-highlights.png" alt="Topic Monitor email preview showing claude code article highlights and trending themes" width="760">
+
+<img src="docs/images/email-preview-top-tweets.png" alt="Topic Monitor email preview showing the top tweets table and source quality table" width="760">
+
 ## Default Schedule
 
 The included workflow runs hourly in UTC, but `scripts/run_daily.py --respect-schedule` only sends during the configured local hour.
@@ -246,6 +264,7 @@ topic-monitor/
 ├── README.md                    # User setup guide
 ├── config.example.md            # Optional local config template
 ├── subscriptions.md             # Followed topics; safe to edit and commit
+├── docs/images/                 # README screenshots and visual previews
 ├── scripts/
 │   ├── run_daily.py             # Scheduled digest entry point
 │   ├── run_search.py            # Manual search entry point
