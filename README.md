@@ -2,7 +2,7 @@
 
 Topic Monitor is a Claude/Codex skill that tracks fresh news and optional Twitter/X posts for followed topics, scores source quality, synthesizes a concise Gemini-powered intelligence report, and emails a polished HTML digest automatically from GitHub Actions.
 
-By default, the cloud scheduler sends the digest every day at **8:00 AM** in the configured timezone. Your laptop does not need to be awake.
+By default, the cloud scheduler sends the digest on the first available GitHub Actions run at or after **8:00 AM** in the configured timezone. Your laptop does not need to be awake.
 
 ![delivery](https://img.shields.io/badge/delivery-Gmail%20HTML%20digest-blue) ![ai](https://img.shields.io/badge/AI-Gemini%20Flash-orange) ![scheduler](https://img.shields.io/badge/scheduler-GitHub%20Actions-black)
 
@@ -37,7 +37,7 @@ The scheduled digest is a polished HTML email with a summary header, one card pe
 
 ## Default Schedule
 
-The included workflow runs hourly in UTC, but `scripts/run_daily.py --respect-schedule` only sends during the configured local hour.
+The included workflow runs hourly at minute 17 in UTC, away from GitHub Actions' congested top-of-hour window. `scripts/run_daily.py --respect-schedule` skips runs before the configured local time and sends on the first available run at or after that time. A persisted daily marker prevents later hourly runs from sending duplicates.
 
 Default values:
 
@@ -47,7 +47,7 @@ SCHEDULE_TIMEZONE=America/Los_Angeles
 SCHEDULED_WINDOW_HOURS=24
 ```
 
-So out of the box, the digest is intended to send every morning at **8:00 AM Pacific time**. Change the repository Variables if you want a different local time or timezone.
+So out of the box, the digest is intended to send every morning on the first available run at or after **8:00 AM Pacific time**. Change the repository Variables if you want a different local time or timezone.
 
 ## Delivery Modes
 

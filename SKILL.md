@@ -44,7 +44,7 @@ The agent must direct users to enter secret values through GitHub Secrets UI or 
 
 After secrets and variables are set, instruct the user to run **Topic Monitor Daily Digest -> Run workflow** in GitHub Actions. Manual workflow runs send immediately with `--force`; scheduled runs send at the configured local time.
 
-Default scheduled delivery is every day at **8:00 AM** in `America/Los_Angeles`, unless repository Variables override it.
+Default scheduled delivery is the first available GitHub Actions run at or after **8:00 AM** in `America/Los_Angeles`, unless repository Variables override it. A persisted daily marker prevents duplicate sends from later runs.
 
 > Security note: `config.md`, credential files (`gemini_api_key`, `gmail_app_password`, `gmail_sender`, `twitter_api_key`), `last_sent_date`, and `logs/` are gitignored. Real API keys and app passwords must never be committed.
 
@@ -317,7 +317,7 @@ For `/topic-monitor setup github-actions`:
    ```
 9. If the user explicitly pastes a secret into chat, warn that chat is not the safest place for long-lived credentials and recommend rotating it after setup.
 10. Tell the user to run the workflow manually once from the GitHub Actions tab, or use `gh workflow run "Topic Monitor Daily Digest"` when available.
-11. On completion, remind them that scheduled delivery defaults to 8:00 AM daily and runs in GitHub-hosted cloud infrastructure.
+11. On completion, remind them that scheduled delivery defaults to the first available run at or after 8:00 AM daily and runs in GitHub-hosted cloud infrastructure.
 12. Before committing or pushing setup changes, verify no real secrets are tracked with `git status --short` and a secret scan over tracked files.
 
 If a user adds a topic before completing this setup, remind them that `follow` only updates `subscriptions.md`; scheduled cloud email needs the GitHub Secrets and Variables above.

@@ -5,9 +5,11 @@ Use this workflow when Topic Monitor should send daily email without depending o
 ## Behavior
 
 - `.github/workflows/daily.yml` runs on GitHub-hosted runners.
-- The cron trigger wakes hourly in UTC.
+- The cron trigger wakes hourly at minute 17 in UTC to avoid GitHub's congested top-of-hour window.
 - `scripts/run_daily.py --respect-schedule` checks `SCHEDULE_TIME` and `SCHEDULE_TIMEZONE`.
-- The default schedule is **8:00 AM every day** in `America/Los_Angeles`.
+- Runs before the configured time skip; the first available run at or after that time sends.
+- A cached `last_sent_date` marker prevents later hourly runs from sending duplicates.
+- The default schedule is the first available run at or after **8:00 AM every day** in `America/Los_Angeles`.
 - Manual workflow dispatch uses `--force` and sends immediately for testing.
 - Credentials are read from GitHub Secrets, never from committed files.
 - Topics are read from `subscriptions.md`.

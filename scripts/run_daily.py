@@ -32,10 +32,6 @@ SUBSCRIPTIONS_FILE = CONFIG_DIR / "subscriptions.md"
 CONFIG_FILE = CONFIG_DIR / "config.md"
 LAST_SENT_FILE = CONFIG_DIR / "last_sent_date"
 
-# Don't fire if it's before this hour (prevents accidental midnight/early wake triggers)
-EARLIEST_HOUR = 8
-
-
 def parse_config() -> dict:
     config = {
         "email_recipient": None,
@@ -485,22 +481,34 @@ def current_local_datetime(config: dict) -> datetime:
         return datetime.now()
 
 
-def scheduled_hour(config: dict) -> int:
+def scheduled_time_parts(config: dict) -> tuple[int, int]:
     raw_time = str(config.get("schedule_time", "08:00"))
     match = re.match(r"^(\d{1,2})(?::(\d{2}))?$", raw_time)
     if not match:
         print(f"[run_daily] Invalid schedule_time {raw_time!r}; using 08:00.", file=sys.stderr)
-        return 8
-    return max(0, min(23, int(match.group(1))))
+        return 8, 0
+    hour = int(match.group(1))
+    minute = int(match.group(2) or 0)
+    if not 0 <= hour <= 23 or not 0 <= minute <= 59:
+        print(f"[run_daily] Invalid schedule_time {raw_time!r}; using 08:00.", file=sys.stderr)
+        return 8, 0
+    return hour, minute
+
+
+def scheduled_hour(config: dict) -> int:
+    return scheduled_time_parts(config)[0]
 
 
 def should_run_for_schedule(config: dict) -> bool:
     now = current_local_datetime(config)
-    target_hour = scheduled_hour(config)
-    if now.hour != target_hour:
+    target_hour, target_minute = scheduled_time_parts(config)
+    now_minutes = now.hour * 60 + now.minute
+    target_minutes = target_hour * 60 + target_minute
+    if now_minutes < target_minutes:
         print(
-            f"[run_daily] Not scheduled now: local time is {now:%Y-%m-%d %H:%M} "
-            f"in {config.get('schedule_timezone')}, target hour is {target_hour:02d}:00. Skipping.",
+            f"[run_daily] Not due yet: local time is {now:%Y-%m-%d %H:%M} "
+            f"in {config.get('schedule_timezone')}, target time is "
+            f"{target_hour:02d}:{target_minute:02d}. Skipping.",
             file=sys.stderr,
         )
         return False
@@ -521,6 +529,14 @@ def mark_sent_today(config: dict):
     LAST_SENT_FILE.write_text(today_iso(config))
 
 
+def set_github_output(name: str, value: str) -> None:
+    """Expose a simple step output when running inside GitHub Actions."""
+    output_file = os.environ.get("GITHUB_OUTPUT")
+    if output_file:
+        with open(output_file, "a", encoding="utf-8") as handle:
+            handle.write(f"{name}={value}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Topic Monitor daily digest runner")
     parser.add_argument("--dry-run", action="store_true", help="Print report without sending email")
@@ -530,14 +546,11 @@ def main():
     args = parser.parse_args()
 
     config = parse_config()
+    set_github_output("sent_today", "false")
 
-    # Date-gate: only send once per day, and not before EARLIEST_HOUR
+    # Date gate: scheduled runs catch up after the configured time, but send once daily.
     if not args.dry_run and not args.force:
-        now = current_local_datetime(config)
         if args.respect_schedule and not should_run_for_schedule(config):
-            sys.exit(0)
-        if now.hour < EARLIEST_HOUR:
-            print(f"[run_daily] Too early ({now.hour}h < {EARLIEST_HOUR}h minimum). Skipping.", file=sys.stderr)
             sys.exit(0)
         if already_sent_today(config):
             print(f"[run_daily] Digest already sent today ({today_iso(config)}). Skipping.", file=sys.stderr)
@@ -635,6 +648,7 @@ def main():
 
     if any_sent:
         mark_sent_today(config)
+        set_github_output("sent_today", "true")
         print(f"[run_daily] Marked {today_iso(config)} as sent. Won't run again until tomorrow.", file=sys.stderr)
 
 
